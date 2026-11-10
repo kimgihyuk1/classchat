@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>우리반 톡</title>
+<title>2026학년도 4학년 3반 예쁜말 대화방</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
@@ -56,7 +56,7 @@ input{font:inherit}
 .gate{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:var(--mine)}
 .gate .card{width:100%;max-width:360px;text-align:center}
 .gate .logo{font-size:56px;line-height:1}
-.gate h2{font-size:24px;margin:10px 0 4px;color:var(--accent)}
+.gate h2{font-size:22px;word-break:keep-all;line-height:1.35;margin:10px 0 4px;color:var(--accent)}
 .gate p{color:#5b4a00;font-size:14px;margin-bottom:22px}
 .gate input{width:100%;padding:14px;border-radius:12px;border:0;font-size:17px;text-align:center;outline:none}
 .gate button{width:100%;margin-top:10px;padding:14px;background:var(--accent);color:#fff;font-weight:700;font-size:17px;border-radius:12px}
@@ -114,7 +114,7 @@ input{font:inherit}
 <div id="gate" class="gate hidden">
   <div class="card">
     <div class="logo">💬</div>
-    <h2>우리반 톡</h2>
+    <h2>2026학년도 4학년 3반 예쁜말 대화방</h2>
     <p>번호와 이름을 쓰고 입장하세요</p>
     <input id="nameInput" maxlength="12" placeholder="예) 7번 김하늘" autocomplete="off">
     <button id="joinBtn">입장하기</button>
@@ -126,7 +126,7 @@ input{font:inherit}
 <div id="studentView" class="chat hidden">
   <div class="chat-head">
     <span class="dot wait" id="sDot"></span>
-    <h1 id="sTitle">우리반 톡</h1>
+    <h1 id="sTitle">2026학년도 4학년 3반 예쁜말 대화방</h1>
     <span class="count" id="sCount"></span>
   </div>
   <div id="sNotice" class="notice hidden"><b>📢 공지</b><span id="sNoticeText"></span></div>
@@ -166,7 +166,7 @@ input{font:inherit}
   </aside>
   <section class="chat">
     <div class="chat-head">
-      <h1 id="tTitle">우리반 톡</h1>
+      <h1 id="tTitle">2026학년도 4학년 3반 예쁜말 대화방</h1>
       <span class="count">선생님 화면</span>
     </div>
     <div id="tNotice" class="notice hidden"><b>📢 공지</b><span id="tNoticeText"></span></div>
@@ -180,7 +180,7 @@ input{font:inherit}
 
 <div id="bigQR" class="bigqr hidden">
   <div class="inner">
-    <h2 id="bigTitle">우리반 톡</h2>
+    <h2 id="bigTitle">2026학년도 4학년 3반 예쁜말 대화방</h2>
     <div id="qrBig"></div>
     <p>휴대폰·태블릿 카메라로 찍어서 들어오세요</p>
   </div>
@@ -249,7 +249,7 @@ function startTeacher(){
   if(location.protocol==='file:') $('fileWarn').classList.remove('hidden');
 
   const state = {
-    title: load(PREFIX+'title') || '우리반 톡',
+    title: load(PREFIX+'title') || '2026학년도 4학년 3반 예쁜말 대화방',
     notice: load(PREFIX+'notice') || '',
     frozen:false, locked:false,
     msgs: [],
