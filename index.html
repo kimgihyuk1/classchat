@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>우리반 톡</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#b2c7da; --panel:#ffffff; --ink:#1f2328; --sub:#6b7280; --line:#e5e7eb;
+  --mine:#fee500; --other:#ffffff; --teacher:#e8f1ff; --teacherLine:#3b82f6;
+  --accent:#3c1e1e; --danger:#ef4444; --ok:#16a34a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;background:var(--bg);color:var(--ink);-webkit-text-size-adjust:100%}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px}
+input{font:inherit}
+.hidden{display:none!important}
+
+/* ---------- 공통 채팅 ---------- */
+.chat{display:flex;flex-direction:column;height:100%;min-height:0;background:var(--bg)}
+.chat-head{display:flex;align-items:center;gap:10px;padding:12px 16px;background:rgba(178,199,218,.95);border-bottom:1px solid rgba(0,0,0,.06)}
+.chat-head h1{font-size:17px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-head .count{font-size:13px;color:#4b5563;font-weight:500}
+.dot{width:9px;height:9px;border-radius:50%;background:#9ca3af;flex:none}
+.dot.on{background:var(--ok)} .dot.wait{background:#f59e0b}
+.msgs{flex:1;overflow-y:auto;padding:14px 12px 8px;display:flex;flex-direction:column;gap:6px;min-height:0}
+.row{display:flex;gap:8px;align-items:flex-start;max-width:100%}
+.row.mine{justify-content:flex-end}
+.avatar{width:38px;height:38px;border-radius:14px;flex:none;display:grid;place-items:center;font-weight:700;color:#fff;font-size:15px}
+.body{display:flex;flex-direction:column;min-width:0;max-width:75%}
+.row.mine .body{align-items:flex-end}
+.name{font-size:12.5px;color:#374151;margin:0 0 4px 2px}
+.line{display:flex;align-items:flex-end;gap:5px}
+.row.mine .line{flex-direction:row-reverse}
+.bubble{background:var(--other);padding:8px 11px;border-radius:4px 14px 14px 14px;font-size:15px;line-height:1.45;word-break:break-word;white-space:pre-wrap;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+.row.mine .bubble{background:var(--mine);border-radius:14px 4px 14px 14px}
+.row.teacher .bubble{background:var(--teacher);border:1.5px solid var(--teacherLine)}
+.row.teacher .name{color:#1d4ed8;font-weight:700}
+.time{font-size:10.5px;color:#4b5563;flex:none;padding-bottom:2px}
+.cont .avatar{visibility:hidden;height:0}
+.cont .name{display:none}
+.sys{align-self:center;background:rgba(0,0,0,.18);color:#fff;font-size:12.5px;padding:4px 12px;border-radius:12px;margin:6px 0;text-align:center;max-width:90%}
+.notice{margin:8px 12px 0;background:#fff;border-radius:12px;padding:10px 12px;font-size:14px;display:flex;gap:8px;align-items:flex-start;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.notice b{color:#1d4ed8;flex:none}
+.composer{display:flex;gap:8px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line)}
+.composer input{flex:1;border:1px solid var(--line);border-radius:20px;padding:10px 14px;font-size:16px;outline:none;min-width:0}
+.composer input:focus{border-color:#c9b100}
+.composer input:disabled{background:#f3f4f6}
+.send{background:var(--mine);color:var(--accent);font-weight:700;padding:0 16px;border-radius:20px}
+.send:disabled{opacity:.45;cursor:default}
+
+/* ---------- 학생 입장 ---------- */
+.gate{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:var(--mine)}
+.gate .card{width:100%;max-width:360px;text-align:center}
+.gate .logo{font-size:56px;line-height:1}
+.gate h2{font-size:24px;margin:10px 0 4px;color:var(--accent)}
+.gate p{color:#5b4a00;font-size:14px;margin-bottom:22px}
+.gate input{width:100%;padding:14px;border-radius:12px;border:0;font-size:17px;text-align:center;outline:none}
+.gate button{width:100%;margin-top:10px;padding:14px;background:var(--accent);color:#fff;font-weight:700;font-size:17px;border-radius:12px}
+.gate .err{color:#b91c1c;font-size:14px;margin-top:10px;min-height:20px}
+
+/* ---------- 선생님 화면 ---------- */
+.teacher-wrap{display:grid;grid-template-columns:340px 1fr;height:100%}
+.side{background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow-y:auto}
+.side-sec{padding:16px;border-bottom:1px solid var(--line)}
+.side h3{font-size:14px;color:var(--sub);font-weight:600;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.qrbox{background:#fff;display:grid;place-items:center;padding:10px;border-radius:12px;border:1px solid var(--line);cursor:zoom-in}
+.qrbox img,.qrbox canvas{max-width:100%;height:auto!important}
+.link{font-size:12px;color:var(--sub);word-break:break-all;margin-top:8px}
+.warn{background:#fef3c7;color:#92400e;font-size:12.5px;padding:8px 10px;border-radius:8px;margin-top:8px;line-height:1.5}
+.status{font-size:13px;color:var(--sub);display:flex;gap:6px;align-items:center;margin-top:8px}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tool{background:#f3f4f6;padding:10px 6px;font-size:13.5px;font-weight:600;color:#374151}
+.tool.on{background:var(--danger);color:#fff}
+.tool.wide{grid-column:1/-1}
+.members{list-style:none;display:flex;flex-direction:column;gap:2px}
+.members li{display:flex;align-items:center;gap:8px;padding:6px 4px;border-radius:8px;font-size:14px}
+.members li:hover{background:#f9fafb}
+.members .mini{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700;flex:none}
+.members .nm{flex:1}
+.members .off{color:#9ca3af}
+.kick{background:transparent;color:#9ca3af;font-size:12px;padding:3px 7px}
+.kick:hover{background:#fee2e2;color:var(--danger)}
+.empty{color:#9ca3af;font-size:13px;padding:6px 4px}
+
+/* 큰 QR */
+.bigqr{position:fixed;inset:0;background:rgba(17,24,39,.92);display:grid;place-items:center;z-index:50;cursor:zoom-out;padding:16px}
+.bigqr .inner{background:#fff;padding:28px;border-radius:24px;text-align:center;max-width:92vmin}
+.bigqr .inner h2{font-size:clamp(20px,4vmin,36px);margin-bottom:14px;color:var(--accent)}
+.bigqr #qrBig img,.bigqr #qrBig canvas{width:min(70vmin,560px)!important;height:auto!important}
+.bigqr p{margin-top:12px;color:var(--sub);font-size:clamp(13px,2vmin,18px)}
+
+/* 모달 */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.4);display:grid;place-items:center;z-index:40;padding:16px}
+.modal .box{background:#fff;border-radius:16px;padding:18px;width:100%;max-width:380px}
+.modal h4{margin-bottom:10px}
+.modal input{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px}
+.modal .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.modal .acts button{padding:8px 14px;background:#f3f4f6}
+.modal .acts .pri{background:var(--accent);color:#fff}
+
+@media (max-width:760px){
+  .teacher-wrap{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .side{max-height:46vh;border-right:0;border-bottom:1px solid var(--line)}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 학생: 입장 화면 ============ -->
+<div id="gate" class="gate hidden">
+  <div class="card">
+    <div class="logo">💬</div>
+    <h2>우리반 톡</h2>
+    <p>번호와 이름을 쓰고 입장하세요</p>
+    <input id="nameInput" maxlength="12" placeholder="예) 7번 김하늘" autocomplete="off">
+    <button id="joinBtn">입장하기</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+</div>
+
+<!-- ============ 학생: 채팅 ============ -->
+<div id="studentView" class="chat hidden">
+  <div class="chat-head">
+    <span class="dot wait" id="sDot"></span>
+    <h1 id="sTitle">우리반 톡</h1>
+    <span class="count" id="sCount"></span>
+  </div>
+  <div id="sNotice" class="notice hidden"><b>📢 공지</b><span id="sNoticeText"></span></div>
+  <div class="msgs" id="sMsgs"></div>
+  <form class="composer" id="sForm">
+    <input id="sInput" maxlength="200" placeholder="메시지 입력" autocomplete="off" disabled>
+    <button class="send" id="sSend" disabled>전송</button>
+  </form>
+</div>
+
+<!-- ============ 선생님 ============ -->
+<div id="teacherView" class="teacher-wrap hidden">
+  <aside class="side">
+    <div class="side-sec">
+      <h3>접속 QR코드 <span style="font-weight:400;font-size:12px">눌러서 크게 보기</span></h3>
+      <div class="qrbox" id="qrSmall" title="크게 보기"></div>
+      <div class="link" id="joinLink"></div>
+      <div class="status"><span class="dot wait" id="tDot"></span><span id="tStatus">대화방 여는 중…</span></div>
+      <div class="warn hidden" id="fileWarn">⚠️ 지금은 컴퓨터에 저장된 파일로 열려 있어서 학생 휴대폰이 접속할 수 없어요. 이 파일을 인터넷에 올린 주소(예: GitHub Pages)로 열어 주세요.</div>
+    </div>
+    <div class="side-sec">
+      <h3>관리</h3>
+      <div class="tools">
+        <button class="tool" id="btnFreeze">🔇 채팅 멈춤</button>
+        <button class="tool" id="btnLock">🔒 입장 잠금</button>
+        <button class="tool" id="btnNotice">📢 공지 설정</button>
+        <button class="tool" id="btnClear">🧹 대화 지우기</button>
+        <button class="tool" id="btnRename">✏️ 방 이름</button>
+        <button class="tool" id="btnSave">💾 대화 저장</button>
+        <button class="tool wide" id="btnNewRoom">🔄 새 대화방 만들기 (QR 바뀜)</button>
+      </div>
+    </div>
+    <div class="side-sec" style="flex:1">
+      <h3>참여 학생 <span id="memberCount">0명</span></h3>
+      <ul class="members" id="memberList"></ul>
+    </div>
+  </aside>
+  <section class="chat">
+    <div class="chat-head">
+      <h1 id="tTitle">우리반 톡</h1>
+      <span class="count">선생님 화면</span>
+    </div>
+    <div id="tNotice" class="notice hidden"><b>📢 공지</b><span id="tNoticeText"></span></div>
+    <div class="msgs" id="tMsgs"></div>
+    <form class="composer" id="tForm">
+      <input id="tInput" maxlength="500" placeholder="선생님 메시지 입력" autocomplete="off">
+      <button class="send">전송</button>
+    </form>
+  </section>
+</div>
+
+<div id="bigQR" class="bigqr hidden">
+  <div class="inner">
+    <h2 id="bigTitle">우리반 톡</h2>
+    <div id="qrBig"></div>
+    <p>휴대폰·태블릿 카메라로 찍어서 들어오세요</p>
+  </div>
+</div>
+
+<div id="modal" class="modal hidden">
+  <div class="box">
+    <h4 id="mTitle"></h4>
+    <input id="mInput" maxlength="80">
+    <div class="acts"><button id="mCancel">취소</button><button class="pri" id="mOk">확인</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const PREFIX = 'urbantalk-v1-';
+const params = new URLSearchParams(location.search);
+const ROOM = params.get('room');
+
+/* ---------- 공통 유틸 ---------- */
+const COLORS = ['#f97316','#22c55e','#06b6d4','#8b5cf6','#ec4899','#eab308','#14b8a6','#6366f1','#ef4444','#84cc16','#0ea5e9','#d946ef'];
+function colorFor(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))>>>0;return COLORS[h%COLORS.length];}
+function initial(name){const n=name.replace(/^\s*\d+\s*번?\s*/,'').trim()||name;return n.charAt(0);}
+function fmtTime(ts){const d=new Date(ts);let h=d.getHours(),m=d.getMinutes();const ap=h<12?'오전':'오후';h=h%12||12;return `${ap} ${h}:${String(m).padStart(2,'0')}`;}
+function rid(n=6){const a='abcdefghjkmnpqrstuvwxyz23456789';let s='';const r=crypto.getRandomValues(new Uint8Array(n));for(const x of r)s+=a[x%a.length];return s;}
+function store(k,v){try{v===undefined?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}}
+function load(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+
+const BAD = ['씨발','시발','씨바','시바','ㅅㅂ','ㅆㅂ','병신','ㅂㅅ','개새','개색','새끼','ㅅㄲ','존나','졸라','ㅈㄴ','미친놈','미친년','지랄','ㅈㄹ','닥쳐','꺼져','엿먹','fuck','shit'];
+function clean(t){let s=String(t).slice(0,500);for(const w of BAD){s=s.split(w).join('♡'.repeat(w.length));}return s;}
+
+function renderMessages(box, list, myKey){
+  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  box.textContent='';
+  let prev=null;
+  for(const m of list){
+    if(m.type==='sys'){const d=document.createElement('div');d.className='sys';d.textContent=m.text;box.appendChild(d);prev=null;continue;}
+    const mine = m.key===myKey;
+    const cont = prev && prev.key===m.key && (m.ts-prev.ts)<60000;
+    const row=document.createElement('div');
+    row.className='row'+(mine?' mine':'')+(m.role==='teacher'?' teacher':'')+(cont?' cont':'');
+    if(!mine){
+      const av=document.createElement('div');av.className='avatar';
+      av.style.background=m.role==='teacher'?'#2563eb':colorFor(m.name);
+      av.textContent=m.role==='teacher'?'👩‍🏫':initial(m.name);
+      row.appendChild(av);
+    }
+    const body=document.createElement('div');body.className='body';
+    if(!mine){const nm=document.createElement('div');nm.className='name';nm.textContent=m.name;body.appendChild(nm);}
+    const line=document.createElement('div');line.className='line';
+    const b=document.createElement('div');b.className='bubble';b.textContent=m.text;
+    const t=document.createElement('span');t.className='time';t.textContent=fmtTime(m.ts);
+    line.append(b,t);body.appendChild(line);row.appendChild(body);
+    box.appendChild(row);prev=m;
+  }
+  if(atBottom||list.length&&list[list.length-1].key===myKey) box.scrollTop=box.scrollHeight;
+}
+
+/* =========================================================
+   선생님(방장) 모드
+   ========================================================= */
+function startTeacher(){
+  $('teacherView').classList.remove('hidden');
+  if(location.protocol==='file:') $('fileWarn').classList.remove('hidden');
+
+  const state = {
+    title: load(PREFIX+'title') || '우리반 톡',
+    notice: load(PREFIX+'notice') || '',
+    frozen:false, locked:false,
+    msgs: [],
+  };
+  try{ state.msgs = JSON.parse(load(PREFIX+'msgs')||'[]'); }catch(e){}
+  let roomId = load(PREFIX+'room');
+  if(!roomId){ roomId = PREFIX + rid(); store(PREFIX+'room', roomId); }
+
+  const members = new Map(); // key -> {name, conn, online, lastSent}
+  let peer=null, tries=0;
+
+  const joinUrl = () => location.origin + location.pathname + '?room=' + encodeURIComponent(roomId);
+
+  function drawQR(){
+    $('qrSmall').textContent=''; $('qrBig').textContent='';
+    new QRCode($('qrSmall'), {text:joinUrl(), width:260, height:260, correctLevel:QRCode.CorrectLevel.M});
+    new QRCode($('qrBig'), {text:joinUrl(), width:600, height:600, correctLevel:QRCode.CorrectLevel.M});
+    $('joinLink').textContent = joinUrl();
+  }
+  function persist(){ store(PREFIX+'msgs', JSON.stringify(state.msgs.slice(-300))); }
+  function setStatus(txt, cls){ $('tStatus').textContent=txt; $('tDot').className='dot '+cls; }
+
+  function onlineCount(){ let n=0; for(const m of members.values()) if(m.online) n++; return n; }
+  function broadcast(obj){ for(const m of members.values()) if(m.online && m.conn && m.conn.open){ try{m.conn.send(obj);}catch(e){} } }
+  function roomInfo(){ return {t:'room', title:state.title, notice:state.notice, frozen:state.frozen, count:onlineCount()}; }
+
+  function addMsg(m){
+    state.msgs.push(m); if(state.msgs.length>400) state.msgs.splice(0, state.msgs.length-400);
+    persist(); broadcast({t:'msg', m}); redraw();
+  }
+  function sys(text){ addMsg({type:'sys', text, ts:Date.now(), id:rid(8)}); }
+
+  function redraw(){
+    renderMessages($('tMsgs'), state.msgs, 'teacher');
+    $('tTitle').textContent = state.title; $('bigTitle').textContent = state.title;
+    $('tNotice').classList.toggle('hidden', !state.notice); $('tNoticeText').textContent = state.notice;
+    $('btnFreeze').classList.toggle('on', state.frozen); $('btnFreeze').textContent = state.frozen ? '🔊 채팅 다시 열기' : '🔇 채팅 멈춤';
+    $('btnLock').classList.toggle('on', state.locked); $('btnLock').textContent = state.locked ? '🔓 입장 열기' : '🔒 입장 잠금';
+    drawMembers();
+  }
+  function drawMembers(){
+    const ul=$('memberList'); ul.textContent='';
+    const arr=[...members.entries()].sort((a,b)=> (b[1].online-a[1].online) || a[1].name.localeCompare(b[1].name,'ko',{numeric:true}));
+    $('memberCount').textContent = onlineCount()+'명 접속';
+    if(!arr.length){ const li=document.createElement('li'); li.className='empty'; li.textContent='아직 아무도 없어요. QR코드를 보여 주세요!'; ul.appendChild(li); return; }
+    for(const [key,m] of arr){
+      const li=document.createElement('li');
+      const mini=document.createElement('span'); mini.className='mini'; mini.style.background=m.online?colorFor(m.name):'#d1d5db'; mini.textContent=initial(m.name);
+      const nm=document.createElement('span'); nm.className='nm'+(m.online?'':' off'); nm.textContent=m.name+(m.online?'':' (나감)');
+      const k=document.createElement('button'); k.className='kick'; k.textContent='내보내기';
+      k.onclick=()=>{ if(!confirm(m.name+' 학생을 내보낼까요?')) return; try{m.conn&&m.conn.send({t:'kick'});}catch(e){} setTimeout(()=>{try{m.conn&&m.conn.close();}catch(e){}},300); members.delete(key); sys(m.name+' 님이 퇴장되었습니다.'); broadcast(roomInfo()); };
+      li.append(mini,nm,k); ul.appendChild(li);
+    }
+  }
+
+  function handleConn(conn){
+    let key=null;
+    conn.on('data', d=>{
+      if(!d || typeof d!=='object') return;
+      if(d.t==='join'){
+        const name = clean(String(d.name||'').trim()).slice(0,12) || '이름없음';
+        key = String(d.key||'').slice(0,40) || rid(10);
+        const existing = members.get(key);
+        if(state.locked && !existing){ conn.send({t:'denied', reason:'지금은 입장이 잠겨 있어요. 선생님께 말씀드리세요.'}); setTimeout(()=>conn.close(),500); key=null; return; }
+        if(existing && existing.conn && existing.conn!==conn){ try{existing.conn.close();}catch(e){} }
+        const wasOnline = existing && existing.online;
+        members.set(key, {name, conn, online:true, lastSent:existing?existing.lastSent:0});
+        conn.send({t:'welcome', key, msgs:state.msgs.slice(-200), ...roomInfo()});
+        if(!wasOnline && !existing) sys(name+' 님이 들어왔습니다.');
+        else redraw();
+        broadcast(roomInfo());
+        return;
+      }
+      if(!key || !members.has(key)) return;
+      const me = members.get(key);
+      if(d.t==='msg'){
+        if(state.frozen){ conn.send({t:'toast', text:'지금은 선생님이 채팅을 멈췄어요.'}); return; }
+        const now=Date.now();
+        if(now-me.lastSent<1200){ conn.send({t:'toast', text:'너무 빨라요! 천천히 보내 주세요.'}); return; }
+        const text = clean(String(d.text||'').trim()).slice(0,200);
+        if(!text) return;
+        me.lastSent=now;
+        addMsg({id:rid(8), key, name:me.name, role:'student', text, ts:now});
+      }
+    });
+    conn.on('close', ()=>{
+      if(key && members.has(key)){ const m=members.get(key); if(m.conn===conn){ m.online=false; redraw(); broadcast(roomInfo()); } }
+    });
+    conn.on('error', ()=>{});
+  }
+
+  function openPeer(){
+    setStatus('대화방 여는 중…','wait');
+    peer = new Peer(roomId, {debug:0});
+    peer.on('open', ()=>{ tries=0; setStatus('대화방 열림 · 학생 접속 가능','on'); });
+    peer.on('connection', handleConn);
+    peer.on('disconnected', ()=>{ setStatus('연결 다시 잇는 중…','wait'); setTimeout(()=>{ try{peer.reconnect();}catch(e){} },1500); });
+    peer.on('error', err=>{
+      if(err.type==='unavailable-id'){
+        // 새로고침 직후엔 이전 연결이 잠깐 남아 있음 → 잠시 후 재시도
+        tries++; setStatus('잠시만요… 방을 다시 여는 중 ('+tries+')','wait');
+        try{peer.destroy();}catch(e){}
+        if(tries<8) setTimeout(openPeer, 3000);
+        else setStatus('방 주소가 사용 중이에요. "새 대화방 만들기"를 눌러 주세요.','');
+      } else if(err.type==='network' || err.type==='server-error' || err.type==='socket-error'){
+        setStatus('인터넷 연결을 확인해 주세요','');
+      }
+    });
+  }
+
+  // 선생님 메시지
+  $('tForm').addEventListener('submit', e=>{
+    e.preventDefault(); const v=$('tInput').value.trim(); if(!v) return;
+    addMsg({id:rid(8), key:'teacher', name:'선생님', role:'teacher', text:v.slice(0,500), ts:Date.now()});
+    $('tInput').value='';
+  });
+
+  // 모달
+  function ask(title, value, cb){
+    $('mTitle').textContent=title; $('mInput').value=value||''; $('modal').classList.remove('hidden'); $('mInput').focus();
+    $('mOk').onclick=()=>{ $('modal').classList.add('hidden'); cb($('mInput').value.trim()); };
+    $('mCancel').onclick=()=>$('modal').classList.add('hidden');
+    $('mInput').onkeydown=e=>{ if(e.key==='Enter') $('mOk').click(); };
+  }
+
+  $('btnFreeze').onclick=()=>{ state.frozen=!state.frozen; sys(state.frozen?'🔇 선생님이 채팅을 잠시 멈췄어요.':'🔊 다시 채팅할 수 있어요!'); broadcast(roomInfo()); redraw(); };
+  $('btnLock').onclick=()=>{ state.locked=!state.locked; redraw(); };
+  $('btnNotice').onclick=()=>ask('공지 (비우면 공지 없앰)', state.notice, v=>{ state.notice=v; store(PREFIX+'notice', v||undefined); broadcast(roomInfo()); redraw(); });
+  $('btnRename').onclick=()=>ask('대화방 이름', state.title, v=>{ if(!v) return; state.title=v.slice(0,30); store(PREFIX+'title', state.title); broadcast(roomInfo()); redraw(); });
+  $('btnClear').onclick=()=>{ if(!confirm('모든 대화를 지울까요? (학생 화면에서도 지워져요)')) return; state.msgs=[]; persist(); broadcast({t:'clear'}); sys('대화 내용이 지워졌습니다.'); };
+  $('btnSave').onclick=()=>{
+    const lines=[`[${state.title}] ${new Date().toLocaleString('ko-KR')}`,''];
+    for(const m of state.msgs) lines.push(m.type==='sys'?`--- ${m.text} ---`:`[${fmtTime(m.ts)}] ${m.name}: ${m.text}`);
+    const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/plain;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    const d=new Date(); a.download=`${state.title}_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.txt`;
+    a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  };
+  $('btnNewRoom').onclick=()=>{
+    if(!confirm('새 대화방을 만들면 QR코드가 바뀌고, 지금 접속한 학생들은 다시 찍어야 해요. 계속할까요?')) return;
+    broadcast({t:'closed'});
+    store(PREFIX+'room', undefined); store(PREFIX+'msgs', undefined);
+    setTimeout(()=>location.reload(), 400);
+  };
+  $('qrSmall').onclick=()=>$('bigQR').classList.remove('hidden');
+  $('bigQR').onclick=()=>$('bigQR').classList.add('hidden');
+  window.addEventListener('beforeunload', e=>{ if(onlineCount()>0){ e.preventDefault(); e.returnValue=''; } });
+
+  drawQR(); redraw(); openPeer();
+}
+
+/* =========================================================
+   학생 모드
+   ========================================================= */
+function startStudent(){
+  const myKey = load(PREFIX+'key') || (()=>{const k=rid(12); store(PREFIX+'key',k); return k;})();
+  let myName = sessionStorage.getItem(PREFIX+'name') || '';
+  let msgs=[], peer=null, conn=null, joined=false, frozen=false, retryTimer=null, kicked=false;
+
+  function setOnline(on, text){
+    $('sDot').className='dot '+(on?'on':'wait');
+    $('sInput').disabled = !on || frozen; $('sSend').disabled = !on || frozen;
+    $('sInput').placeholder = !on ? (text||'연결 중…') : (frozen ? '선생님이 채팅을 멈췄어요' : '메시지 입력');
+  }
+  function toast(text){ msgs.push({type:'sys', text, ts:Date.now()}); renderMessages($('sMsgs'), msgs, myKey); msgs.pop(); }
+
+  function showGate(err){
+    $('gate').classList.remove('hidden'); $('studentView').classList.add('hidden');
+    $('gateErr').textContent = err||''; $('nameInput').value = myName; $('nameInput').focus();
+  }
+  function enter(){
+    const v=$('nameInput').value.trim();
+    if(v.length<2){ $('gateErr').textContent='번호와 이름을 써 주세요.'; return; }
+    myName=v.slice(0,12); sessionStorage.setItem(PREFIX+'name', myName);
+    $('gate').classList.add('hidden'); $('studentView').classList.remove('hidden');
+    connect();
+  }
+  $('joinBtn').onclick=enter;
+  $('nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') enter(); });
+
+  function scheduleRetry(){ if(kicked) return; clearTimeout(retryTimer); retryTimer=setTimeout(connect, 3000); }
+
+  function connect(){
+    if(kicked) return;
+    setOnline(false, '선생님 대화방에 연결 중…');
+    const go=()=>{
+      try{ conn && conn.close(); }catch(e){}
+      conn = peer.connect(ROOM, {reliable:true});
+      const t=setTimeout(()=>{ if(!joined){ setOnline(false,'선생님 화면이 열려 있는지 확인 중…'); try{conn.close();}catch(e){} scheduleRetry(); } }, 8000);
+      conn.on('open', ()=>{ conn.send({t:'join', name:myName, key:myKey}); });
+      conn.on('data', d=>{
+        if(!d||typeof d!=='object') return;
+        if(d.t==='welcome'){ clearTimeout(t); joined=true; msgs=d.msgs||[]; applyRoom(d); renderMessages($('sMsgs'), msgs, myKey); $('sMsgs').scrollTop=$('sMsgs').scrollHeight; setOnline(true); }
+        else if(d.t==='room'){ applyRoom(d); setOnline(true); }
+        else if(d.t==='msg'){ msgs.push(d.m); if(msgs.length>400) msgs.shift(); renderMessages($('sMsgs'), msgs, myKey); }
+        else if(d.t==='clear'){ msgs=[]; renderMessages($('sMsgs'), msgs, myKey); }
+        else if(d.t==='toast'){ toast(d.text); }
+        else if(d.t==='denied'){ clearTimeout(t); kicked=true; showGate(d.reason); kicked=false; }
+        else if(d.t==='kick'){ kicked=true; sessionStorage.removeItem(PREFIX+'name'); showGate('선생님이 대화방에서 내보냈어요.'); }
+        else if(d.t==='closed'){ kicked=true; setOnline(false,'대화방이 닫혔어요. 새 QR코드를 찍어 주세요.'); }
+      });
+      conn.on('close', ()=>{ clearTimeout(t); joined=false; if(!kicked){ setOnline(false,'연결이 끊겼어요. 다시 연결 중…'); scheduleRetry(); } });
+      conn.on('error', ()=>{});
+    };
+    if(peer && !peer.destroyed && peer.open){ go(); return; }
+    try{ peer && peer.destroy(); }catch(e){}
+    peer = new Peer({debug:0});
+    peer.on('open', go);
+    peer.on('error', err=>{
+      if(err.type==='peer-unavailable'){ setOnline(false,'선생님 화면이 아직 안 열렸어요. 기다리는 중…'); }
+      else setOnline(false,'인터넷 연결을 확인해 주세요');
+      joined=false; scheduleRetry();
+    });
+    peer.on('disconnected', ()=>{ try{peer.reconnect();}catch(e){} });
+  }
+
+  function applyRoom(d){
+    if(d.title){ $('sTitle').textContent=d.title; document.title=d.title; }
+    if(typeof d.count==='number') $('sCount').textContent=d.count+'명';
+    $('sNotice').classList.toggle('hidden', !d.notice); $('sNoticeText').textContent=d.notice||'';
+    if(typeof d.frozen==='boolean') frozen=d.frozen;
+  }
+
+  $('sForm').addEventListener('submit', e=>{
+    e.preventDefault(); const v=$('sInput').value.trim();
+    if(!v || !conn || !conn.open) return;
+    conn.send({t:'msg', text:v}); $('sInput').value=''; $('sInput').focus();
+  });
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && !joined && myName && !kicked) connect(); });
+
+  if(myName){ $('studentView').classList.remove('hidden'); connect(); } else showGate();
+}
+
+if(typeof Peer==='undefined'){
+  document.body.innerHTML='<div style="padding:24px;font-size:16px">인터넷에 연결되어 있지 않아 대화방을 열 수 없어요. 연결 후 새로고침해 주세요.</div>';
+  return;
+}
+ROOM ? startStudent() : startTeacher();
+})();
+</script>
+</body>
+</html>
